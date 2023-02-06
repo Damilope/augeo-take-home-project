@@ -1,0 +1,3 @@
+describe('endpoints', () => {
+  test('listDepartment', () => {});
+});
