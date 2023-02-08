@@ -1,12 +1,14 @@
 import {ApolloServer} from '@apollo/server';
 import {startStandaloneServer} from '@apollo/server/standalone';
 import {readFileSync} from 'fs';
-import * as LokiDB from 'lokijs';
 import {extractAppVariables} from './applicationVariables';
-import {appConstants} from './constants';
 import {
   getDepartment,
   getPerson,
+  getPersonDepartment,
+  getPersonManager,
+  getPersonReports,
+  listDepartmentPeople,
   listDepartments,
   listPeople,
   updateDepartment,
@@ -14,79 +16,22 @@ import {
 } from './endpoints';
 import {typeDefs} from './graphSchema';
 import {
-  AppContext,
-  AppInitializationData,
-  AppState,
-  AppVariables,
-  Department,
-  LokiDBAndCollections,
-  Person,
-} from './types';
+  InMemoryDepartmentsDataLayer,
+  InMemoryPeopleDataLayer,
+} from './memoryDataLayers';
+import {AppContext, AppInitializationData} from './types';
 import {
   appInitializationDataJoiSchema,
   validateDataWithJoiSchema,
 } from './validation';
 
-export function initDB(vars: AppVariables) {
-  return new Promise<LokiDBAndCollections>((resolve, reject) => {
-    const db = new LokiDB(vars.dbName, {
-      autoloadCallback: initializeCollections,
-      autoload: appConstants.dbAutoload,
-      autosave: appConstants.dbAutosave,
-      autosaveInterval: appConstants.dbAutosaveInterval,
-    });
-
-    function initializeCollections(error: unknown) {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      const departments = initDBCollection<Department>(
-        db,
-        appConstants.dbDepartmentsCollectionName
-      );
-      const people = initDBCollection<Person>(
-        db,
-        appConstants.dbPeopleCollectionName
-      );
-      const appState = initDBCollection<AppState>(
-        db,
-        appConstants.dbAppStateCollectionName
-      );
-      resolve({db, departments, people, appState});
-    }
-
-    function initDBCollection<T extends object>(db: LokiDB, name: string) {
-      let collection = db.getCollection<T>(name);
-      if (collection === null) {
-        collection = db.addCollection<T>(name);
-      }
-      return collection;
-    }
-  });
-}
-
 /**
- * Loads JSON data from the {@link AppVariables.initializationDataJsonFilePath}
- * provided if there isn't an existing app state doc with
- * {@link AppState.isDataLoaded} set to true. This makes sure that data is not
- * loaded if it's already loaded, though there are places where it falls short:
- * - Because it sets app state after data is loaded, if any error occurs when
- *   data is loaded into DB preventing setting app state, but some data is
- *   already loaded, there's be data duplicated in DB. This can be solved by
- *   clearing DB if there isn't app state.
- * - If we want to add new people or departments using the same file hoping
- *   they'll be added to DB when the application starts, that will not work if
- *   app state is already set.
+ * Loads the server's initialization data from
+ * {@link AppVariables.initializationDataJsonFilePath}, validates it, and
+ * returns it. The initialization data should follow the format
+ * {@link AppInitializationData}.
  */
-export async function loadAppDataIntoDB(context: AppContext) {
-  const appState = context.db.appState.findOne({isDataLoaded: true});
-  const isDataLoaded = appState?.isDataLoaded;
-  if (isDataLoaded) {
-    return;
-  }
-
+export function loadInitAppDataFromFile(context: AppContext) {
   const dataRaw = readFileSync(context.vars.initializationDataJsonFilePath, {
     encoding: 'utf-8',
   });
@@ -95,16 +40,32 @@ export async function loadAppDataIntoDB(context: AppContext) {
     appInitializationDataJoiSchema,
     dataParsed
   );
-  context.db.departments.insert(value.departments);
-  context.db.people.insert(value.people);
-  context.db.appState.insert({isDataLoaded: true});
+  return value;
 }
 
-export async function initContext(): Promise<AppContext> {
-  const vars = extractAppVariables();
-  const db = await initDB(vars);
-  const context: AppContext = {db, vars};
-  await loadAppDataIntoDB(context);
+/**
+ * Loads the server's initialization data from file and into DB.
+ */
+export async function loadInitAppDataIntoDB(context: AppContext) {
+  const value = await loadInitAppDataFromFile(context);
+  context.data.departments.insert(value.departments);
+  context.data.people.insert(value.people);
+}
+
+/**
+ * Iinitializes server context {@link AppContext}, and loads server
+ * initialization data.
+ */
+export async function initAppContext(): Promise<AppContext> {
+  const context: AppContext = {
+    vars: extractAppVariables(),
+    data: {
+      departments: new InMemoryDepartmentsDataLayer(),
+      people: new InMemoryPeopleDataLayer(),
+      dispose: async () => {},
+    },
+  };
+  await loadInitAppDataIntoDB(context);
   return context;
 }
 
@@ -120,12 +81,20 @@ export async function startServer() {
       updateDepartment,
       updatePerson,
     },
+    DepartmentWithRelationships: {
+      people: listDepartmentPeople,
+    },
+    PersonWithRelationships: {
+      manager: getPersonManager,
+      department: getPersonDepartment,
+      reports: getPersonReports,
+    },
   };
   const server = new ApolloServer({
     typeDefs,
     resolvers,
   });
-  const context = await initContext();
+  const context = await initAppContext();
   const {url} = await startStandaloneServer(server, {
     listen: {port: context.vars.port},
     context: () => Promise.resolve(context),

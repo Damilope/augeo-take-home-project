@@ -1,14 +1,15 @@
-import {EnvVarNames} from './constants';
+import {EnvironmentVarNames} from './constants';
 import {AppVariables} from './types';
 import {appVariablesJoiSchema, validateDataWithJoiSchema} from './validation';
 
+/**
+ * Extracts and validates app variables from process env variables.
+ */
 export function extractAppVariables(): AppVariables {
-  const dbName = process.env[EnvVarNames.DBName];
   const initializationDataJsonFilePath =
-    process.env[EnvVarNames.InitializationDataJsonFilePath];
-  const port = process.env[EnvVarNames.Port];
+    process.env[EnvironmentVarNames.InitializationDataJsonFilePath];
+  const port = process.env[EnvironmentVarNames.Port];
   return validateDataWithJoiSchema(appVariablesJoiSchema, {
-    dbName,
     initializationDataJsonFilePath,
     port,
   });

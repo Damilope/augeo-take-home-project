@@ -1,5 +1,5 @@
 import * as Joi from 'joi';
-import {EnvVarNames} from './constants';
+import {appConstants, EnvironmentVarNames} from './constants';
 import {
   AppInitializationData,
   AppVariables,
@@ -12,53 +12,73 @@ import {
   UpdatePersonParams,
 } from './types';
 
+const id = Joi.string().guid();
+const departmentName = Joi.string().max(appConstants.maxNameLength);
+const personName = Joi.string().max(appConstants.maxNameLength);
+const jobTitle = Joi.string().max(appConstants.maxNameLength);
+const idRequired = id.required();
+const departmentNameRequired = departmentName.required();
+const personNameRequired = personName.required();
+const jobTitleRequired = jobTitle.required();
+
 export const departmentJoiSchema = Joi.object<Department>().keys({
-  id: Joi.string().guid().required(),
-  name: Joi.string().required(),
+  id: idRequired,
+  name: departmentNameRequired,
 });
+
 export const personJoiSchema = Joi.object<Person>().keys({
-  id: Joi.string().guid().required(),
-  departmentId: Joi.string().required(),
-  managerId: Joi.string(),
-  firstName: Joi.string().required(),
-  lastName: Joi.string().required(),
-  jobTitle: Joi.string().required(),
+  id: idRequired,
+  departmentId: idRequired,
+  managerId: id,
+  firstName: personNameRequired,
+  lastName: personNameRequired,
+  jobTitle: jobTitleRequired,
 });
+
 export const updateDepartmentInputJoiSchema =
   Joi.object<UpdateDepartmentInput>().keys({
-    name: Joi.string(),
+    name: departmentName,
   });
+
 export const updatePersonInputJoiSchema = Joi.object<UpdatePersonInput>().keys({
-  departmentId: Joi.string().required(),
-  managerId: Joi.string(),
-  firstName: Joi.string().required(),
-  lastName: Joi.string().required(),
-  jobTitle: Joi.string().required(),
+  departmentId: id,
+  managerId: id,
+  firstName: personName,
+  lastName: personName,
+  jobTitle: jobTitle,
 });
+
 export const queryByIdJoiSchema = Joi.object<QueryByIDParams>().keys({
-  id: Joi.string().required(),
+  id,
 });
+
 export const updatePersonParamsJoiSchema =
   Joi.object<UpdatePersonParams>().keys({
-    id: Joi.string().required(),
+    id,
     person: updatePersonInputJoiSchema.required(),
   });
+
 export const updateDepartmentParamsJoiSchema =
   Joi.object<UpdateDepartmentParams>().keys({
-    id: Joi.string().required(),
+    id,
     department: updateDepartmentInputJoiSchema.required(),
   });
+
 export const appInitializationDataJoiSchema =
   Joi.object<AppInitializationData>().keys({
     departments: Joi.array().items(departmentJoiSchema).required(),
     people: Joi.array().items(personJoiSchema).required(),
   });
+
 export const appVariablesJoiSchema = Joi.object<AppVariables>().keys({
-  dbName: Joi.string().required().label(EnvVarNames.DBName),
   initializationDataJsonFilePath: Joi.string()
     .required()
-    .label(EnvVarNames.InitializationDataJsonFilePath),
-  port: Joi.number().integer().positive().required().label(EnvVarNames.Port),
+    .label(EnvironmentVarNames.InitializationDataJsonFilePath),
+  port: Joi.number()
+    .integer()
+    .positive()
+    .required()
+    .label(EnvironmentVarNames.Port),
 });
 
 export function validateDataWithJoiSchema<T>(

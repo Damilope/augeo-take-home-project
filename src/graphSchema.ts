@@ -1,28 +1,4 @@
 export const typeDefs = `#graphql
-  type Department {
-    name: String!
-    id: ID!
-  }
-
-  type Person {
-    id: ID!
-    firstName: String!
-    lastName: String!
-    jobTitle: String!
-    departmentId: ID!
-    managerId: ID
-  }
-
-  type DepartmentRelationships {
-    people: [Person]!
-  }
-
-  type PersonRelationships {
-    manager: Person
-    reports: [Person]!
-    department: Department!
-  }
-
   input DepartmentInput {
     name: String!
   }
@@ -35,18 +11,33 @@ export const typeDefs = `#graphql
     managerId: ID
   }
 
-  union QueryDepartmentResult = Department | DepartmentRelationships
-  union QueryPersonResult = Person | PersonRelationships
+  type DepartmentWithRelationships {
+    name: String!
+    id: ID!
+    people: [PersonWithRelationships]!
+  }
+
+  type PersonWithRelationships {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    jobTitle: String!
+    departmentId: ID!
+    managerId: ID
+    manager: PersonWithRelationships
+    reports: [PersonWithRelationships]!
+    department: DepartmentWithRelationships!
+  }
 
   type Query {
-    departments: [QueryDepartmentResult]!
-    department(id: ID!): QueryDepartmentResult
-    people: [QueryPersonResult]!
-    person(id: ID!): QueryPersonResult
+    departments: [DepartmentWithRelationships]!
+    department(id: ID!): DepartmentWithRelationships
+    people: [PersonWithRelationships]!
+    person(id: ID!): PersonWithRelationships
   }
 
   type Mutation {
-    updateDepartment(id: ID!, department: DepartmentInput!): QueryDepartmentResult
-    updatePerson(id: ID!, person: PersonInput!): QueryPersonResult
+    updateDepartment(id: ID!, department: DepartmentInput!): DepartmentWithRelationships
+    updatePerson(id: ID!, person: PersonInput!): PersonWithRelationships
   }
 `;

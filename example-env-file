@@ -1,0 +1,3 @@
+# An example env file
+INITIALIZATION_DATA_JSON_FILE_PATH="UserDataJson.txt"
+PORT=3000

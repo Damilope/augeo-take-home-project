@@ -1,5 +1,4 @@
-export const EnvVarNames = {
-  DBName: 'DB_NAME',
+export const EnvironmentVarNames = {
   InitializationDataJsonFilePath: 'INITIALIZATION_DATA_JSON_FILE_PATH',
   Port: 'PORT',
 } as const;
@@ -11,4 +10,5 @@ export const appConstants = {
   dbAutoload: true,
   dbAutosave: true,
   dbAutosaveInterval: 4000,
+  maxNameLength: 100,
 };

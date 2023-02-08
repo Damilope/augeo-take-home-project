@@ -1,13 +1,14 @@
 import {GraphQLResolveInfo} from 'graphql';
-import type * as LokiDB from 'lokijs';
 
-export interface Department {
-  name: string;
+export interface IResource {
   id: string;
 }
 
-export interface Person {
-  id: string;
+export interface Department extends IResource {
+  name: string;
+}
+
+export interface Person extends IResource {
   firstName: string;
   lastName: string;
   jobTitle: string;
@@ -16,17 +17,13 @@ export interface Person {
 }
 
 export interface DepartmentWithRelationships extends Department {
-  people?: Person[];
+  people: Resolver<PersonWithRelationships[], undefined, Department>;
 }
 
 export interface PersonWithRelationships extends Person {
-  manager?: Person;
-  reports?: Person[];
-  department?: Department;
-}
-
-export interface AppState {
-  isDataLoaded?: boolean;
+  manager: Resolver<PersonWithRelationships | null, undefined, Person>;
+  reports: Resolver<PersonWithRelationships[], undefined, Person>;
+  department: Resolver<DepartmentWithRelationships | null, undefined, Person>;
 }
 
 export interface UpdateDepartmentInput {
@@ -54,41 +51,53 @@ export interface UpdatePersonParams extends QueryByIDParams {
 }
 
 export interface AppVariables {
-  dbName: string;
   initializationDataJsonFilePath: string;
   port: number;
 }
 
-export interface LokiDBAndCollections {
-  db: LokiDB;
-  departments: LokiDB.Collection<Department>;
-  people: LokiDB.Collection<Person>;
-  appState: LokiDB.Collection<AppState>;
+type OrPromise<T> = T | Promise<T>;
+type IsStringField<T, K extends keyof T> = T[K] extends string ? K : never;
+
+/**
+ * Extracts the string fields of type `T`
+ */
+export type StringFields<T> = {
+  [K in keyof T]: IsStringField<T, K>;
+}[keyof T];
+
+/**
+ * An abstraction over the server's data to allow for easy switching of
+ * underlying data provider without drastic changes to code that consume data.
+ * It'll also allow for easy mocking of data layer for tests and other
+ * environments.
+ */
+export interface ResourceDataLayer<T> {
+  insert(items: T[]): OrPromise<void>;
+  getItems(): OrPromise<T[]>;
+  getItemByField<K extends keyof T>(field: K, value: T[K]): OrPromise<T | null>;
+  getItemListByField<K extends keyof T>(field: K, value: T[K]): OrPromise<T[]>;
+  getItemByRegex<K extends StringFields<T>>(
+    field: K,
+    value: RegExp
+  ): OrPromise<T | null>;
+  updateByField<K extends keyof T>(
+    field: K,
+    value: T[K],
+    update: Partial<T>
+  ): OrPromise<T | null>;
 }
 
-export interface DepartmentDataLayer {
-  getDepartments(): Promise<Department[]>;
-  getDepartmentById(id: string): Promise<Department | null>;
-  updateDepartmentById(
-    id: string,
-    update: Partial<Department>
-  ): Promise<Department | null>;
-}
-
-export interface PersonDataLayer {
-  getPeople(): Promise<Person[]>;
-  getPersonById(id: string): Promise<Person | null>;
-  updatePersonById(id: string, update: Partial<Person>): Promise<Person | null>;
-}
+export type DepartmentsDataLayer = ResourceDataLayer<Department>;
+export type PeopleDataLayer = ResourceDataLayer<Person>;
 
 export interface DataLayer {
-  department: DepartmentDataLayer;
-  person: PersonDataLayer;
+  departments: DepartmentsDataLayer;
+  people: PeopleDataLayer;
+  dispose(): Promise<void>;
 }
 
 export interface AppContext {
   vars: AppVariables;
-  db: LokiDBAndCollections;
   data: DataLayer;
 }
 
