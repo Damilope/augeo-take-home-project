@@ -254,7 +254,7 @@ async function assertDepartmentNameIsAvailable(
   const departmentExists = await context.data.departments.getItemByRegex(
     'name',
     // Use regex to get around case-sensitivity
-    new RegExp(name, 'i')
+    new RegExp(`^${name}$`, 'i')
   );
 
   if (departmentExists) {

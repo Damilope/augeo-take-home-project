@@ -14,7 +14,7 @@ export const typeDefs = `#graphql
   type DepartmentWithRelationships {
     name: String!
     id: ID!
-    people: [PersonWithRelationships]!
+    people: [PersonWithRelationships!]!
   }
 
   type PersonWithRelationships {
@@ -25,14 +25,14 @@ export const typeDefs = `#graphql
     departmentId: ID!
     managerId: ID
     manager: PersonWithRelationships
-    reports: [PersonWithRelationships]!
+    reports: [PersonWithRelationships!]!
     department: DepartmentWithRelationships!
   }
 
   type Query {
-    departments: [DepartmentWithRelationships]!
+    departments: [DepartmentWithRelationships!]!
     department(id: ID!): DepartmentWithRelationships
-    people: [PersonWithRelationships]!
+    people: [PersonWithRelationships!]!
     person(id: ID!): PersonWithRelationships
   }
 

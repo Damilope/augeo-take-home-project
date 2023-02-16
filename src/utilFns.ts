@@ -4,10 +4,7 @@ import {get, isFunction, isNil} from 'lodash';
  * Returns item at `path` in `data` if `path` is provided, otherwise, returns
  * `data` stringified.
  */
-function indexArrayDefaultIndexer(
-  data: unknown,
-  path?: string | number | symbol
-) {
+function indexArrayDefaultIndexer(data: any, path?: string | number | symbol) {
   if (path) {
     return get(data, path);
   }
@@ -32,7 +29,7 @@ export interface IIndexArrayOptions<T, R = T> {
    */
   indexer?: (
     current: T,
-    path: TryGetObjectKeys<T>,
+    path: TryGetObjectKeys<T> | undefined,
     arr: T[],
     index: number
   ) => string;
